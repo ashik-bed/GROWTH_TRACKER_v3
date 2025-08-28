@@ -1,0 +1,8 @@
+pandas
+streamlit
+xlrd>=2.0.1
+openpyxl
+gspread
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
