@@ -96,11 +96,19 @@ if report_type in ["Gold", "Subdebt"] and old_file and new_file:
             old_df = read_file(old_file)
             new_df = read_file(new_file)
 
+            # 🔹 Clean Customer Name (remove "{Reliant Creditsfin")
+            if report_type == "Subdebt":
+                if "Customer Name" in old_df.columns:
+                    old_df["Customer Name"] = old_df["Customer Name"].str.replace("{Reliant Creditsfin", "", regex=False).str.strip()
+                if "Customer Name" in new_df.columns:
+                    new_df["Customer Name"] = new_df["Customer Name"].str.replace("{Reliant Creditsfin", "", regex=False).str.strip()
+
             # 🔹 Remove Predator scheme
             if "SCHEME NAME" in old_df.columns:
                 old_df = old_df[old_df["SCHEME NAME"].str.strip().str.upper() != "RCIL PREDATOR 18%"]
             if "SCHEME NAME" in new_df.columns:
                 new_df = new_df[new_df["SCHEME NAME"].str.strip().str.upper() != "RCIL PREDATOR 18%"]
+
 
             required_cols = [value_column, staff_column, branch_column]
             missing_cols_old = [col for col in required_cols if col not in old_df.columns]
