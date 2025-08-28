@@ -164,7 +164,7 @@ if report_type in ["Gold", "Subdebt"] and old_file and new_file:
 
 # ---------------- SS PENDING REPORT ----------------
 if report_type == "SS Pending Report" and pending_file:
-    show_customer_profile = st.checkbox("👤 Show Customer Profile (Pending Customers Only)")
+    show_customer_profile = st.checkbox("👤 Show Customer Report")
 
     if st.button("▶️ Run Report"):
         try:
@@ -203,7 +203,7 @@ if report_type == "SS Pending Report" and pending_file:
                          "PRINCIPAL OS", "INTEREST OS", "DUE DAYS"]
                     ].copy()
 
-                    st.success("✅ SS Pending Customer Profile generated successfully!")
+                    st.success("✅ SS Pending Customer Report generated successfully!")
                     st.dataframe(pending_customers, use_container_width=True)
 
                     output = io.BytesIO()
@@ -396,3 +396,4 @@ if "merged_df" in st.session_state:
                 st.error("❌ Incorrect password. Access denied.")
 else:
     st.info("📎 Please upload and run a report before connecting to Google Sheets.")
+
