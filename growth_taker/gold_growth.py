@@ -6,7 +6,7 @@ import io
 import streamlit as st
 
 # ---------------- GOOGLE SHEETS SETTINGS ----------------
-SERVICE_ACCOUNT_FILE = "sheetconnector-468508-1e0052475ae2.json"
+SERVICE_ACCOUNT_FILE = "sheetconnector-468508-7d9612d7556f.json"
 SPREADSHEET_ID = "1gJUFsC0WTohZvo1gVF925dpQMVNXSR3GmjrOUXf9cFU"
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -164,7 +164,7 @@ if report_type in ["Gold", "Subdebt"] and old_file and new_file:
 
 # ---------------- SS PENDING REPORT ----------------
 if report_type == "SS Pending Report" and pending_file:
-    show_customer_profile = st.checkbox("👤 Show Customer Report")
+    show_customer_profile = st.checkbox("👤 Show Customer Profile (Pending Customers Only)")
 
     if st.button("▶️ Run Report"):
         try:
@@ -199,11 +199,11 @@ if report_type == "SS Pending Report" and pending_file:
                 if show_customer_profile:
                     # 🔹 Only pending customers, with selected columns
                     pending_customers = df[df["DUE DAYS"] > 30][
-                        ["BRANCH NAME", "CUSTOMER NAME", "CUSTOMER ID",
+                        ["BRANCH NAME", "CUSTOMER NAME", "CUSTOMER ID","NEW ACCOUNT NO",
                          "PRINCIPAL OS", "INTEREST OS", "DUE DAYS"]
                     ].copy()
 
-                    st.success("✅ SS Pending Customer Report generated successfully!")
+                    st.success("✅ SS Pending Customer Profile generated successfully!")
                     st.dataframe(pending_customers, use_container_width=True)
 
                     output = io.BytesIO()
@@ -363,28 +363,39 @@ if "merged_df" in st.session_state:
     )
 
     # Map correct sheet names
-    if report_type == "Gold" and mode == "Branch-wise":
-        sheet_name = "BRANCH_GL"
-    elif report_type == "Gold" and mode == "Staff-wise":
-        sheet_name = "STAFF_GL"
+    if report_type == "Gold":
+        if mode == "Branch-wise":
+            sheet_name = "BRANCH_GL"
+        elif mode == "Staff-wise":
+            # ✅ Fix: check if STAFF NAME column exists
+            if "STAFF NAME" in merged_df.columns or "Staff Name" in merged_df.columns:
+                sheet_name = "STAFF_GL"
+            else:
+                sheet_name = "STAFF_GL"
+
+
     elif report_type == "Subdebt":
         if mode == "Branch-wise":
             sheet_name = "BRANCH_SD"
         elif mode == "Staff-wise":
-            # ✅ Fix: if staff-wise includes branches → send to BRANCH_SD
+            # ✅ If staff-wise includes branch → send to branch sheet
             if "Branch Name" in merged_df.columns:
                 sheet_name = "BRANCH_SD"
             else:
                 sheet_name = "STAFF_SD"
         else:
             sheet_name = "STAFF_SD"
+
     elif report_type == "SS Pending Report":
         sheet_name = "SS_PENDING"
+
     elif report_type == "NPA":
         sheet_name = "NPA_REPORT"
+
     else:
         sheet_name = "UNKNOWN"
 
+    # Upload section (with password protection)
     with st.expander("🔐 Admin Upload to Google Sheet"):
         password_input = st.text_input("Enter Admin Password", type="password")
         if st.button("🔗 Connect to Google Sheet"):
@@ -392,8 +403,10 @@ if "merged_df" in st.session_state:
                 with st.spinner(f"🔄 Uploading report to {sheet_name}... Please wait"):
                     if upload_dataframe_to_specific_tab(merged_df, sheet_name):
                         st.success(f"✅ Report uploaded to Google Sheet tab: {sheet_name}")
+                    else:
+                        st.error("⚠️ Upload failed. Please check your connection or credentials.")
             else:
                 st.error("❌ Incorrect password. Access denied.")
+
 else:
     st.info("📎 Please upload and run a report before connecting to Google Sheets.")
-
