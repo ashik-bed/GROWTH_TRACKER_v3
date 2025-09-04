@@ -176,12 +176,12 @@ if report_type == "SS Pending Report" and pending_file:
                 df = df[df["SCHEME NAME"].str.strip().str.upper() != "RCIL PREDATOR 18%"]
 
             required_cols = ["BRANCH NAME", "DUE DAYS", "SCHEME NAME",
-                             "PRINCIPAL OS", "INTEREST OS", "CUSTOMER NAME", "CUSTOMER ID"]
+                             "PRINCIPAL OS", "INTEREST OS", "CUSTOMER NAME", "CUSTOMER ID", "NEW ACCOUNT NO"]
             missing_cols = [c for c in required_cols if c not in df.columns]
             if missing_cols:
                 st.error(f"❌ Missing columns: {missing_cols}")
             else:
-                # Allowed schemes filter
+                # 🔹 Allowed schemes filter
                 allowed_schemes = [
                     "BIG SPL @20% KAR", "BIG SPL 20%", "BIG SPL 22%", "BUSINESS GOLD 12 MNTH SPL",
                     "RCIL SPL $24", "RCIL SPL $24 HYD", "RCIL SPL @24 KL-T", "RCIL SPL 2024(24%)",
@@ -196,10 +196,13 @@ if report_type == "SS Pending Report" and pending_file:
                 allowed_schemes = [s.upper() for s in allowed_schemes]
                 df = df[df["SCHEME NAME"].str.upper().isin(allowed_schemes)]
 
+                # 🔹 Define SS Pending (Due Days > 30)
+                ss_pending = df[df["DUE DAYS"] > 30].copy()
+
                 if show_customer_profile:
-                    # 🔹 Only pending customers, with selected columns
-                    pending_customers = df[df["DUE DAYS"] > 30][
-                        ["BRANCH NAME", "CUSTOMER NAME", "CUSTOMER ID","NEW ACCOUNT NO",
+                    # --- Customer Profile View ---
+                    pending_customers = ss_pending[
+                        ["BRANCH NAME", "CUSTOMER NAME", "CUSTOMER ID", "NEW ACCOUNT NO",
                          "PRINCIPAL OS", "INTEREST OS", "DUE DAYS"]
                     ].copy()
 
@@ -216,17 +219,20 @@ if report_type == "SS Pending Report" and pending_file:
                     )
 
                 else:
-                    # 🔹 Branch summary (default view)
+                    # --- Branch Summary View ---
                     grouped = df.groupby("BRANCH NAME")
                     report = []
                     for branch, data in grouped:
                         total_count = len(data)
                         total_amount = data["PRINCIPAL OS"].sum()
-                        pending = data[data["DUE DAYS"] > 30]
-                        pending_count = len(pending)
-                        pending_amount = pending["PRINCIPAL OS"].sum()
-                        pending_interest = pending["INTEREST OS"].sum()
+
+                        # SS Pending for this branch
+                        branch_pending = ss_pending[ss_pending["BRANCH NAME"] == branch]
+                        pending_count = len(branch_pending)
+                        pending_amount = branch_pending["PRINCIPAL OS"].sum()
+                        pending_interest = branch_pending["INTEREST OS"].sum()
                         pending_pct = (pending_count / total_count * 100) if total_count > 0 else 0
+
                         report.append({
                             "BRANCH NAME": branch,
                             "Total_Count": total_count,
@@ -250,6 +256,7 @@ if report_type == "SS Pending Report" and pending_file:
                         file_name="ss_pending_report.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
+
         except Exception as e:
             st.error(f"❌ Error processing SS Pending Report: {e}")
 
