@@ -109,7 +109,6 @@ if report_type in ["Gold", "Subdebt"] and old_file and new_file:
             if "SCHEME NAME" in new_df.columns:
                 new_df = new_df[new_df["SCHEME NAME"].str.strip().str.upper() != "RCIL PREDATOR 18%"]
 
-
             required_cols = [value_column, staff_column, branch_column]
             missing_cols_old = [col for col in required_cols if col not in old_df.columns]
             missing_cols_new = [col for col in required_cols if col not in new_df.columns]
@@ -117,7 +116,7 @@ if report_type in ["Gold", "Subdebt"] and old_file and new_file:
             if missing_cols_old or missing_cols_new:
                 st.error(f"❌ Missing columns: {missing_cols_old + missing_cols_new}")
             else:
-                # Grouping
+                # Grouping logic
                 if report_type == "Subdebt" and mode == "Staff-wise":
                     group_column = [staff_column, branch_column] if include_branches else [staff_column]
                 else:
@@ -126,9 +125,17 @@ if report_type in ["Gold", "Subdebt"] and old_file and new_file:
                 old_group = old_df.groupby(group_column)[value_column].sum().reset_index()
                 new_group = new_df.groupby(group_column)[value_column].sum().reset_index()
 
-                merged = pd.merge(new_group, old_group, on=group_column, suffixes=('_New', '_Old'))
+                # ✅ UPDATED MERGE SECTION (outer join for new + old)
+                merged = pd.merge(new_group, old_group, on=group_column, suffixes=('_New', '_Old'), how='outer')
+
+                # ✅ Fill missing with zero for growth calculation
+                merged[f"{value_column}_New"] = merged[f"{value_column}_New"].fillna(0)
+                merged[f"{value_column}_Old"] = merged[f"{value_column}_Old"].fillna(0)
+
+                # ✅ Calculate growth correctly even for new or missing entries
                 merged["Growth"] = merged[f"{value_column}_New"] - merged[f"{value_column}_Old"]
 
+                # Add canvasser name if present
                 if report_type == "Subdebt" and mode == "Staff-wise" and "Canvasser Name" in new_df.columns:
                     merged = pd.merge(
                         merged,
@@ -144,6 +151,7 @@ if report_type in ["Gold", "Subdebt"] and old_file and new_file:
                     col_order.append(branch_column)
                 for col in merged.columns:
                     if col not in col_order: col_order.append(col)
+
                 merged = merged[col_order].sort_values("Growth", ascending=False)
 
                 st.session_state["merged_df"] = merged
@@ -161,6 +169,7 @@ if report_type in ["Gold", "Subdebt"] and old_file and new_file:
                 )
         except Exception as e:
             st.error(f"❌ Error processing files: {e}")
+
 
 # ---------------- SS PENDING REPORT ----------------
 if report_type == "SS Pending Report" and pending_file:
@@ -417,3 +426,4 @@ if "merged_df" in st.session_state:
 
 else:
     st.info("📎 Please upload and run a report before connecting to Google Sheets.")
+
